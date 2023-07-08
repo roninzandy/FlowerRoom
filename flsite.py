@@ -38,7 +38,7 @@ def get_db():
 def index():
     db = get_db()
     dbase = FDataBase(db)
-    return render_template('index.html', menu = dbase.getMenu())
+    return render_template('index.html', menu = dbase.getMenu(), posts=dbase.getPostsAnonce())
 
 @app.teardown_appcontext
 def close_db(error):
@@ -74,11 +74,12 @@ def contact():
         else:
             flash('Ошибка отправки', category='error')
 
-    return render_template('contact.html', title='Контакты', menu=menu, message=message)
+    #return render_template('contact.html', title='Контакты', menu=menu, message=message)
 
 @app.errorhandler(404)
 def pageNotFound(error):
-    return render_template('page404.html', title='Страница не найдена', menu=menu), 404 #писать 404 необязательно
+    pass
+    #return render_template('page404.html', title='Страница не найдена', menu=menu), 404 #писать 404 необязательно
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
