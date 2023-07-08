@@ -1,6 +1,6 @@
 import math
 import sqlite3
-from datetime import time
+import time
 
 
 class FDataBase:
@@ -17,6 +17,7 @@ class FDataBase:
                 return res
         except:
             print("Ошибка чтения из БД")
+
         return []
 
     def addPost(self, title, text):
@@ -29,6 +30,18 @@ class FDataBase:
             return False
 
         return True
+
+    def getPost(self, postId):
+        try:
+            self.__cur.execute(f"SELECT title, text FROM posts WHERE id = {postId} LIMIT 1")
+            res = self.__cur.fetchone()
+            if res:
+                return res
+
+        except sqlite3.Error as e:
+            print("Ошибка получения статьи из БД " + str(e))
+
+        return (False, False)
 
     def getPostsAnonce(self):
         try:
