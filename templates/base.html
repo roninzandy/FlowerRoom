@@ -15,10 +15,9 @@
 
 {% block mainmenu %}
 <ul class="mainmenu">
-
-		<li><a href="{{url_for('index')}}">Главная</a></li>
-<li><a href="{{url_for('addPost')}}">Добавление записи</a></li>
-
+{% for p in menu %}
+		<li><a href="{{p.url}}">{{p.title}}</a></li>
+{% endfor %}
 
 	</ul>
 {% endblock mainmenu %}

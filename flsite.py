@@ -11,7 +11,7 @@ DEBUG = True
 SECRET_KEY = 'rnnz12345'
 
 app = Flask(__name__)
-app.config.from_object(__name__) #загружаем конфигурацию из приложения (from_object)
+app.config.from_object(__name__) #загружаем конфигурацию из приложения. (from_object)
 
 app.config.update(dict(DATABASE=os.path.join(app.root_path, 'flsite.db'))) #переопределяем путь к БД
 
@@ -46,7 +46,7 @@ def index():
     return render_template('index.html', menu = dbase.getMenu(), posts=dbase.getPostsAnonce())
 
 
-@app.route('/contact', methods=["POST","GET"])
+@app.route('/contact', methods=["POST", "GET"])
 def contact():
     db = get_db()
     dbase = FDataBase(db)
@@ -84,7 +84,7 @@ def addPost():
 
     if request.method == "POST":
         if len(request.form['name']) > 4 and len(request.form['post']) > 10:
-            res = dbase.addPost(request.form['name'], request.form['post'])
+            res = dbase.addPost(request.form['name'], request.form['post'], request.form['url'])
             if not res:
                 flash('Ошибка добавления статьи', category='error')
             else:
@@ -95,11 +95,11 @@ def addPost():
     return render_template('add_post.html', menu=dbase.getMenu(), title="Добавление статьи")
 
 
-@app.route("/post/<int:id_post>")
-def showPost(id_post):
+@app.route("/post/<alias>")
+def showPost(alias):
     db = get_db()
     dbase = FDataBase(db)
-    title, post = dbase.getPost(id_post)
+    title, post = dbase.getPost(alias)
     if not title:
         abort(404)
 
@@ -118,4 +118,3 @@ def profile(username):
 
 if __name__ == "__main__":
     app.run()
-
