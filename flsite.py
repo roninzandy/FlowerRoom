@@ -1,7 +1,7 @@
 import os
 import sqlite3
 
-from flask import Flask, render_template, url_for, request, flash, session, redirect, abort, g
+from flask import Flask, render_template, url_for, request, flash, session, redirect, abort, g, make_response
 
 from FDataBase import FDataBase
 
@@ -70,12 +70,21 @@ def login():
     db = get_db()
     dbase = FDataBase(db)
     if 'username' in session:
-        return redirect(url_for('profile', username=session['userLogged']))
+        return redirect(url_for('profile', username=session['userLogged']), 302)
     elif request.method == 'POST' and request.form['username'] == 'selfedu' and request.form['psw'] == '123':
         session['userLogged'] = request.form['username']
         return redirect(url_for('profile', username=session['userLogged']))
-
-    return render_template('login.html', title='Авторизация', menu=dbase.getMenu())
+    #Добавил 'Неверный логин или пароль' в случае неудачной авторизации
+    elif request.method == 'POST' and (request.form['username'] != 'selfedu' or request.form['psw'] != '123'):
+        flash('Неверный логин или пароль', category='error')
+    res = render_template('login.html', title='Авторизация', menu=dbase.getMenu())
+    # Добавление куков:
+    # log = ''
+    # if request.cookies.get('logged'):
+    #     log = request.cookies.get('logged')
+    # res = make_response(f'<h1>Форма авторизации</h1><p>logged: {log}')
+    # res.set_cookie("logged", "yes")
+    return res
 
 @app.route("/add_post", methods=["POST", "GET"])
 def addPost():
@@ -118,3 +127,5 @@ def profile(username):
 
 if __name__ == "__main__":
     app.run()
+
+print(session)
