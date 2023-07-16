@@ -1,6 +1,7 @@
+import datetime
 import os
 import sqlite3
-
+from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, render_template, url_for, request, flash, session, redirect, abort, g, make_response
 
 from FDataBase import FDataBase
@@ -9,9 +10,11 @@ from FDataBase import FDataBase
 DATABASE = '/tmp/flsite.db'
 DEBUG = True
 SECRET_KEY = 'rnnz12345'
+#для генерации ключа - os.urandom(20).hex()
 
 app = Flask(__name__)
 app.config.from_object(__name__) #загружаем конфигурацию из приложения. (from_object)
+#app.permanent_session_lifetime = datetime.timedelta(days=10) #устаналиваем срок жизни сессии
 
 app.config.update(dict(DATABASE=os.path.join(app.root_path, 'flsite.db'))) #переопределяем путь к БД
 
@@ -36,20 +39,25 @@ def get_db():
 
 @app.teardown_appcontext
 def close_db(error):
+    #разрыв соединения в конце запроса
     if hasattr(g, 'link_db'):
         g.link_db.close()
 
-@app.route("/")
-def index():
+dbase = None
+@app.before_request
+def before_request():
+    #Установка соединения с БД перед выполнением запроса
+    global dbase
     db = get_db()
     dbase = FDataBase(db)
+
+@app.route("/") #обработчик запросов
+def index(): #функция представления
     return render_template('index.html', menu = dbase.getMenu(), posts=dbase.getPostsAnonce())
 
 
 @app.route('/contact', methods=["POST", "GET"])
 def contact():
-    db = get_db()
-    dbase = FDataBase(db)
 
     if request.method == 'POST':
         if len(request.form['username']) > 2:
@@ -61,15 +69,14 @@ def contact():
 
 @app.errorhandler(404)
 def pageNotFound(error):
-    db = get_db()
-    dbase = FDataBase(db)
+
     return render_template('page404.html', title='Страница не найдена', menu=dbase.getMenu()), 404 #писать 404 необязательно (только если хотим контректную ошибку)
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
-    db = get_db()
-    dbase = FDataBase(db)
-    if 'username' in session:
+
+    #session.permanent = True #срок жизни сессии 31 день
+    if 'username' in session: #куки сессии существуют пока пользователь не закроет браузер
         return redirect(url_for('profile', username=session['userLogged']), 302)
     elif request.method == 'POST' and request.form['username'] == 'selfedu' and request.form['psw'] == '123':
         session['userLogged'] = request.form['username']
@@ -86,10 +93,28 @@ def login():
     # res.set_cookie("logged", "yes")
     return res
 
+
+@app.route("/register", methods=["POST", "GET"])
+def register():
+    if request.method == "POST":
+        session.pop('_flashes', None)
+        if len(request.form['name']) > 4 and len(request.form['email']) > 4 \
+                and len(request.form['psw']) > 4 and request.form['psw'] == request.form['psw2']:
+            hash = generate_password_hash(request.form['psw'])
+            res = dbase.addUser(request.form['name'], request.form['email'], hash)
+            if res:
+                flash("Вы успешно зарегистрированы", "success")
+                return redirect(url_for('login'))
+            else:
+                flash("Ошибка при добавлении в БД", "error")
+        else:
+            flash("Неверно заполнены поля", "error")
+
+    return render_template("register.html", menu=dbase.getMenu(), title="Регистрация")
+
 @app.route("/add_post", methods=["POST", "GET"])
 def addPost():
-    db = get_db()
-    dbase = FDataBase(db)
+
 
     if request.method == "POST":
         if len(request.form['name']) > 4 and len(request.form['post']) > 10:
@@ -106,8 +131,7 @@ def addPost():
 
 @app.route("/post/<alias>")
 def showPost(alias):
-    db = get_db()
-    dbase = FDataBase(db)
+
     title, post = dbase.getPost(alias)
     if not title:
         abort(404)
@@ -118,6 +142,7 @@ def showPost(alias):
 
 @app.route('/profile/<username>')
 def profile(username):
+    #session.permanent = True
     if 'userLogged' not in session or session['userLogged'] != username:
         abort(401)
     return f'Профиль пользователя: {username}'
@@ -128,4 +153,3 @@ def profile(username):
 if __name__ == "__main__":
     app.run()
 
-print(session)
