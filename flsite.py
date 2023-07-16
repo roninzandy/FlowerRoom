@@ -3,8 +3,9 @@ import os
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, render_template, url_for, request, flash, session, redirect, abort, g, make_response
-
+from flask_login import LoginManager, login_user, login_required
 from FDataBase import FDataBase
+from UserLogin import UserLogin
 
 #конфигурация
 DATABASE = '/tmp/flsite.db'
@@ -18,6 +19,11 @@ app.config.from_object(__name__) #загружаем конфигурацию и
 
 app.config.update(dict(DATABASE=os.path.join(app.root_path, 'flsite.db'))) #переопределяем путь к БД
 
+login_manager = LoginManager(app)
+@login_manager.user_loader #выполняется при каждом запросе от сайта (клиента) для идентификации сессии пользователя
+def load_user(user_id):
+    print("load_user")
+    return UserLogin().fromDB(user_id, dbase)
 def connect_db():
     conn = sqlite3.connect(app.config['DATABASE'])
     conn.row_factory = sqlite3.Row  #отображение в виде словаря вместо кортежа
@@ -53,7 +59,7 @@ def before_request():
 
 @app.route("/") #обработчик запросов
 def index(): #функция представления
-    return render_template('index.html', menu = dbase.getMenu(), posts=dbase.getPostsAnonce())
+    return render_template('index.html', menu=dbase.getMenu(), posts=dbase.getPostsAnonce())
 
 
 @app.route('/contact', methods=["POST", "GET"])
@@ -72,26 +78,41 @@ def pageNotFound(error):
 
     return render_template('page404.html', title='Страница не найдена', menu=dbase.getMenu()), 404 #писать 404 необязательно (только если хотим контректную ошибку)
 
-@app.route('/login', methods=['POST', 'GET'])
-def login():
 
-    #session.permanent = True #срок жизни сессии 31 день
-    if 'username' in session: #куки сессии существуют пока пользователь не закроет браузер
-        return redirect(url_for('profile', username=session['userLogged']), 302)
-    elif request.method == 'POST' and request.form['username'] == 'selfedu' and request.form['psw'] == '123':
-        session['userLogged'] = request.form['username']
-        return redirect(url_for('profile', username=session['userLogged']))
-    #Добавил 'Неверный логин или пароль' в случае неудачной авторизации
-    elif request.method == 'POST' and (request.form['username'] != 'selfedu' or request.form['psw'] != '123'):
-        flash('Неверный логин или пароль', category='error')
-    res = render_template('login.html', title='Авторизация', menu=dbase.getMenu())
-    # Добавление куков:
-    # log = ''
-    # if request.cookies.get('logged'):
-    #     log = request.cookies.get('logged')
-    # res = make_response(f'<h1>Форма авторизации</h1><p>logged: {log}')
-    # res.set_cookie("logged", "yes")
-    return res
+@app.route("/login", methods=["POST", "GET"])
+def login():
+    if request.method == "POST":
+        user = dbase.getUserByEmail(request.form['email'])
+        if user and check_password_hash(user['psw'], request.form['psw']):
+            userlogin = UserLogin().create(user) #заносит в сессию информацию о текущем пользователе
+            login_user(userlogin) #авторизация пользователя
+            return redirect(url_for('index'))
+
+        flash("Неверная пара логин/пароль", "error")
+
+    return render_template("login.html", menu=dbase.getMenu(), title="Авторизация")
+
+#старый login
+# @app.route('/login', methods=['POST', 'GET'])
+# def login():
+
+    ##session.permanent = True #срок жизни сессии 31 день
+    # if 'username' in session: #куки сессии существуют пока пользователь не закроет браузер
+    #     return redirect(url_for('profile', username=session['userLogged']), 302)
+    # elif request.method == 'POST' and request.form['username'] == 'selfedu' and request.form['psw'] == '123':
+    #     session['userLogged'] = request.form['username']
+    #     return redirect(url_for('profile', username=session['userLogged']))
+    ##Добавил 'Неверный логин или пароль' в случае неудачной авторизации
+    # elif request.method == 'POST' and (request.form['username'] != 'selfedu' or request.form['psw'] != '123'):
+    #     flash('Неверный логин или пароль', category='error')
+    # res = render_template('login.html', title='Авторизация', menu=dbase.getMenu())
+    ## Добавление куков (нужно интегрировать):
+    ## log = ''
+    ## if request.cookies.get('logged'):
+    ##     log = request.cookies.get('logged')
+    ## res = make_response(f'<h1>Форма авторизации</h1><p>logged: {log}')
+    ## res.set_cookie("logged", "yes")
+    # return res
 
 
 @app.route("/register", methods=["POST", "GET"])
@@ -114,8 +135,6 @@ def register():
 
 @app.route("/add_post", methods=["POST", "GET"])
 def addPost():
-
-
     if request.method == "POST":
         if len(request.form['name']) > 4 and len(request.form['post']) > 10:
             res = dbase.addPost(request.form['name'], request.form['post'], request.form['url'])
@@ -130,8 +149,8 @@ def addPost():
 
 
 @app.route("/post/<alias>")
+@login_required
 def showPost(alias):
-
     title, post = dbase.getPost(alias)
     if not title:
         abort(404)

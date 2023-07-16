@@ -81,3 +81,29 @@ class FDataBase:
             return False
 
         return True
+
+    def getUser(self, user_id):
+        try:
+            self.__cur.execute(f"SELECT * FROM users WHERE id = ? LIMIT 1", (user_id,))
+            res = self.__cur.fetchone()
+            if not res:
+                print("Пользователь не найден")
+                return False
+
+            return res
+        except sqlite3.Error as e:
+            print("Ошибка получения данных из БД " + str(e))
+
+        return False
+
+    def getUserByEmail(self, email):
+        try:
+            self.__cur.execute(f"SELECT * FROM users WHERE email = ? LIMIT 1", (email,))
+            res = self.__cur.fetchone()
+            if not res:
+                print("Пользователь не найден")
+                return False
+            return res
+        except sqlite3.Error as e:
+            print("Ошибка получения данных из БД " + str(e))
+        return False
