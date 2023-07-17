@@ -20,6 +20,9 @@ app.config.from_object(__name__) #загружаем конфигурацию и
 app.config.update(dict(DATABASE=os.path.join(app.root_path, 'flsite.db'))) #переопределяем путь к БД
 
 login_manager = LoginManager(app)
+login_manager.login_view = 'login' #перенаправление на форму авторизации при попытке открыть закрытый контент, при этом в url остается путь на контент
+login_manager.login_message = 'Авторизуйтесь для доступа к закрытым страницам' #заменяем дефолтную просьбу авторизоваться
+login_manager.login_message_category = 'success' #категория мгновенного сообщения
 @login_manager.user_loader #выполняется при каждом запросе от сайта (клиента) для идентификации сессии пользователя
 def load_user(user_id):
     print("load_user")
@@ -81,13 +84,16 @@ def pageNotFound(error):
 
 @app.route("/login", methods=["POST", "GET"])
 def login():
+
+    if current_user.is_authenticated:
+        return redirect(url_for('profile'))
     if request.method == "POST":
         user = dbase.getUserByEmail(request.form['email'])
         if user and check_password_hash(user['psw'], request.form['psw']):
             userlogin = UserLogin().create(user) #заносит в сессию информацию о текущем пользователе
             rm = True if request.form.get('remainme') else False
             login_user(userlogin, remember=rm) #авторизация пользователя
-            return redirect(url_for('profile'))
+            return redirect(request.args.get('next') or url_for('profile'))
 
         flash("Неверная пара логин/пароль", "error")
 
@@ -186,4 +192,3 @@ def profile():
 
 if __name__ == "__main__":
     app.run()
-
