@@ -3,7 +3,7 @@ import os
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, render_template, url_for, request, flash, session, redirect, abort, g, make_response
-from flask_login import LoginManager, login_user, login_required
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from FDataBase import FDataBase
 from UserLogin import UserLogin
 
@@ -85,8 +85,9 @@ def login():
         user = dbase.getUserByEmail(request.form['email'])
         if user and check_password_hash(user['psw'], request.form['psw']):
             userlogin = UserLogin().create(user) #заносит в сессию информацию о текущем пользователе
-            login_user(userlogin) #авторизация пользователя
-            return redirect(url_for('index'))
+            rm = True if request.form.get('remainme') else False
+            login_user(userlogin, remember=rm) #авторизация пользователя
+            return redirect(url_for('profile'))
 
         flash("Неверная пара логин/пароль", "error")
 
@@ -158,13 +159,27 @@ def showPost(alias):
     return render_template('post.html', menu=dbase.getMenu(), title=title, post=post)
 
 
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user() #вся сессионнная информация будет очищена
+    flash('Вы вышли из аккаунта', 'success')
+    return redirect(url_for('login'))
 
-@app.route('/profile/<username>')
-def profile(username):
-    #session.permanent = True
-    if 'userLogged' not in session or session['userLogged'] != username:
-        abort(401)
-    return f'Профиль пользователя: {username}'
+
+@app.route('/profile')
+@login_required
+def profile():
+    return f"""<p><a href="{url_for('logout')}">Выйти из профиля</a>
+            <p>user info {current_user.get_id()}"""
+
+#старый profile
+# @app.route('/profile/<username>')
+# def profile(username):
+#     #session.permanent = True
+#     if 'userLogged' not in session or session['userLogged'] != username:
+#         abort(401)
+#     return f'Профиль пользователя: {username}'
 
 # with app.test_request_context():
 #     print(url_for('index'))
