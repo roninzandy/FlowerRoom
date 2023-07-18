@@ -12,8 +12,15 @@
                    <form action="{{url_for('upload')}}" method="POST" enctype="multipart/form-data">
                             <input type="file" name="file">
                             <input type="submit" value="Загрузить">
+                       </form>
+                    </div>
+             <div class="profile-load">
+                       <form action="{{url_for('delete')}}" method="POST">
+                       <input type="submit" value="Удалить изображение">
+
                    </form> 
                    </div>
+
          </td>
          <td valign="top" class="profile-panel">
                    <a href="{{url_for('logout')}}">Выйти из профиля</a>

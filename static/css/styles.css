@@ -106,7 +106,7 @@ ul.list-posts .annonce {
 }
 .profile-load input[type=submit], input[type=file] {
          width: 100%;
-         font-size: 18px;
+         font-size: 12px;
 }
 .profile-load p {
          padding: 0;

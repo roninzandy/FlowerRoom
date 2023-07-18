@@ -194,6 +194,24 @@ def userava():
     h.headers['Content-Type'] = 'image/png'
     return h
 
+@app.route('/delete', methods=["POST", "GET"])
+@login_required
+def delete():
+    if request.method == 'POST':
+        try:
+            res = dbase.deleteUserAvatar(current_user.get_id())
+            if not res:
+                flash("Ошибка удаления аватара", "error")
+                return redirect(url_for('profile'))
+            flash("Аватар удален", "success")
+        except FileNotFoundError as e:
+            flash("Ошибка удаления аватара", "error")
+
+
+
+    return redirect(url_for('profile'))
+
+
 
 @app.route('/upload', methods=["POST", "GET"])
 @login_required

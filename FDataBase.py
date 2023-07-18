@@ -121,3 +121,12 @@ class FDataBase:
             print("Ошибка обновления аватара в БД: " + str(e))
             return False
         return True
+
+    def deleteUserAvatar(self, user_id):
+        try:
+            self.__cur.execute(f'UPDATE users SET avatar = ? WHERE id = ?', (None, user_id))
+            self.__db.commit()
+        except sqlite3.Error as e:
+            print("Ошибка удаления аватара в БД: " + str(e))
+            return False
+        return True
