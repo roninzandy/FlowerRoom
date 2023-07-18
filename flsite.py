@@ -12,6 +12,7 @@ DATABASE = '/tmp/flsite.db'
 DEBUG = True
 SECRET_KEY = 'rnnz12345'
 #для генерации ключа - os.urandom(20).hex()
+MAX_CONTENT_LENGTH = 1024 * 1024 #максимальный размер загружаемых файлов
 
 app = Flask(__name__)
 app.config.from_object(__name__) #загружаем конфигурацию из приложения. (from_object)
@@ -91,9 +92,9 @@ def login():
         user = dbase.getUserByEmail(request.form['email'])
         if user and check_password_hash(user['psw'], request.form['psw']):
             userlogin = UserLogin().create(user) #заносит в сессию информацию о текущем пользователе
-            rm = True if request.form.get('remainme') else False
-            login_user(userlogin, remember=rm) #авторизация пользователя
-            return redirect(request.args.get('next') or url_for('profile'))
+            rm = True if request.form.get('remainme') else False #функционал "запомнить меня"
+            login_user(userlogin, remember=rm) #авторизация пользователя. на этом этапе создается current_user
+            return redirect(request.args.get('next') or url_for('profile')) #попытка прочитать закрытый контент -> форма авторизации -> контент
 
         flash("Неверная пара логин/пароль", "error")
 
@@ -176,9 +177,43 @@ def logout():
 @app.route('/profile')
 @login_required
 def profile():
-    return f"""<p><a href="{url_for('logout')}">Выйти из профиля</a>
-            <p>user info {current_user.get_id()}"""
+    # старое
+    # return f"""<p><a href="{url_for('logout')}">Выйти из профиля</a>
+    #         <p>user info {current_user.get_id()}"""
+    return render_template('profile.html', menu=dbase.getMenu(), title='Профиль')
 
+
+@app.route('/userava')
+@login_required
+def userava():
+    img = current_user.getAvatar(app)
+    if not img:
+        return ""
+
+    h = make_response(img)
+    h.headers['Content-Type'] = 'image/png'
+    return h
+
+
+@app.route('/upload', methods=["POST", "GET"])
+@login_required
+def upload():
+    if request.method == 'POST':
+        file = request.files['file']
+        if file and current_user.verifyExt(file.filename): #verifyExt - проверка на то, что расширение файла соотв. PNG
+            try:
+                img = file.read()
+                res = dbase.updateUserAvatar(img, current_user.get_id())
+                if not res:
+                    flash("Ошибка обновления аватара", "error")
+                    return redirect(url_for('profile'))
+                flash("Аватар обновлен", "success")
+            except FileNotFoundError as e:
+                flash("Ошибка чтения файла", "error")
+        else:
+            flash("Ошибка обновления аватара", "error")
+
+    return redirect(url_for('profile'))
 #старый profile
 # @app.route('/profile/<username>')
 # def profile(username):
