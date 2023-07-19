@@ -6,6 +6,7 @@ from flask import Flask, render_template, url_for, request, flash, session, redi
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from FDataBase import FDataBase
 from UserLogin import UserLogin
+from forms import LoginForm
 
 #конфигурация
 DATABASE = '/tmp/flsite.db'
@@ -88,17 +89,30 @@ def login():
 
     if current_user.is_authenticated:
         return redirect(url_for('profile'))
-    if request.method == "POST":
-        user = dbase.getUserByEmail(request.form['email'])
-        if user and check_password_hash(user['psw'], request.form['psw']):
+
+    form = LoginForm()
+    if form.validate_on_submit(): #проверяет, были ли отправлены какие-либо данные и проверяет корректность введенных данных
+        user = dbase.getUserByEmail(form.email.data)
+        if user and check_password_hash(user['psw'], form.psw.data):
             userlogin = UserLogin().create(user) #заносит в сессию информацию о текущем пользователе
-            rm = True if request.form.get('remainme') else False #функционал "запомнить меня"
+            rm = form.remember.data #функционал "запомнить меня"
             login_user(userlogin, remember=rm) #авторизация пользователя. на этом этапе создается current_user
             return redirect(request.args.get('next') or url_for('profile')) #попытка прочитать закрытый контент -> форма авторизации -> контент
-
         flash("Неверная пара логин/пароль", "error")
 
-    return render_template("login.html", menu=dbase.getMenu(), title="Авторизация")
+    return render_template('login.html', menu=dbase.getMenu(), title='Авторизация', form=form)
+    #заменим кусок ниже на проверку через формы
+    # if request.method == "POST":
+    #     user = dbase.getUserByEmail(request.form['email'])
+    #     if user and check_password_hash(user['psw'], request.form['psw']):
+    #         userlogin = UserLogin().create(user) #заносит в сессию информацию о текущем пользователе
+    #         rm = True if request.form.get('remainme') else False #функционал "запомнить меня"
+    #         login_user(userlogin, remember=rm) #авторизация пользователя. на этом этапе создается current_user
+    #         return redirect(request.args.get('next') or url_for('profile')) #попытка прочитать закрытый контент -> форма авторизации -> контент
+    #
+    #     flash("Неверная пара логин/пароль", "error")
+    #
+    # return render_template("login.html", menu=dbase.getMenu(), title="Авторизация")
 
 #старый login
 # @app.route('/login', methods=['POST', 'GET'])
@@ -216,7 +230,7 @@ def delete():
 @app.route('/upload', methods=["POST", "GET"])
 @login_required
 def upload():
-    if request.method == 'POST':
+    if request.method == 'POST': #проверка на то, были ли отправлены данные
         file = request.files['file']
         if file and current_user.verifyExt(file.filename): #verifyExt - проверка на то, что расширение файла соотв. PNG
             try:
