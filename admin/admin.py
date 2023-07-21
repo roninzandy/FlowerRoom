@@ -19,17 +19,17 @@ def logout_admin():
 
 
 db = None
-# @admin.before_request
-# def before_request():
-#     """Установление соединения с БД перед выполнением запроса"""
-#     global db
-#     db = g.get('link_db')
+@admin.before_request
+def before_request():
+    """Установление соединения с БД перед выполнением запроса"""
+    global db
+    db = g.get('link_db')
 
-# @admin.teardown_request
-# def teardown_request(request):
-#     global db
-#     db = None
-#     return request
+@admin.teardown_request
+def teardown_request(request):
+    global db
+    db = None
+    return request
 
 @admin.route('/')
 def index():
