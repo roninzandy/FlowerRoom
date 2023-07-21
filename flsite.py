@@ -26,7 +26,7 @@ app.config.from_object(__name__) #загружаем конфигурацию и
 
 app.config.update(dict(DATABASE=os.path.join(app.root_path, 'flsite.db'))) #переопределяем путь к БД
 
-app.register_blueprint(admin, url_prefix='/admin')
+app.register_blueprint(admin, url_prefix='/admin') #регистрируем админ-панель
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login' #перенаправление на форму авторизации при попытке открыть закрытый контент, при этом в url остается путь на контент
@@ -148,7 +148,7 @@ def login():
 def register():
     form = RegisterForm()
     if form.validate_on_submit():
-        hash = generate_password_hash(request.form['psw'])
+        hash = generate_password_hash(form.psw.data)
         res = dbase.addUser(form.name.data, form.email.data, hash)
         if res:
             flash("Вы успешно зарегистрированы", "success")
