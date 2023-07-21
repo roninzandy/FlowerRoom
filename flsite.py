@@ -1,12 +1,15 @@
 import datetime
 import os
+
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, render_template, url_for, request, flash, session, redirect, abort, g, make_response
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+
 from FDataBase import FDataBase
 from UserLogin import UserLogin
-from forms import LoginForm
+from forms import LoginForm, RegisterForm
+from admin.admin import admin
 
 #конфигурация
 DATABASE = '/tmp/flsite.db'
@@ -15,11 +18,15 @@ SECRET_KEY = 'rnnz12345'
 #для генерации ключа - os.urandom(20).hex()
 MAX_CONTENT_LENGTH = 1024 * 1024 #максимальный размер загружаемых файлов
 
+
+
 app = Flask(__name__)
 app.config.from_object(__name__) #загружаем конфигурацию из приложения. (from_object)
 #app.permanent_session_lifetime = datetime.timedelta(days=10) #устаналиваем срок жизни сессии
 
 app.config.update(dict(DATABASE=os.path.join(app.root_path, 'flsite.db'))) #переопределяем путь к БД
+
+app.register_blueprint(admin, url_prefix='/admin')
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login' #перенаправление на форму авторизации при попытке открыть закрытый контент, при этом в url остается путь на контент
@@ -45,7 +52,7 @@ def create_db():
 
 def get_db():
     if not hasattr(g, 'link_db'):
-        g.link_db = connect_db()
+        g.link_db = connect_db() #g - переменная контекста приложения
     return g.link_db
 
 @app.teardown_appcontext
@@ -139,21 +146,17 @@ def login():
 
 @app.route("/register", methods=["POST", "GET"])
 def register():
-    if request.method == "POST":
-        session.pop('_flashes', None)
-        if len(request.form['name']) > 4 and len(request.form['email']) > 4 \
-                and len(request.form['psw']) > 4 and request.form['psw'] == request.form['psw2']:
-            hash = generate_password_hash(request.form['psw'])
-            res = dbase.addUser(request.form['name'], request.form['email'], hash)
-            if res:
-                flash("Вы успешно зарегистрированы", "success")
-                return redirect(url_for('login'))
-            else:
-                flash("Ошибка при добавлении в БД", "error")
+    form = RegisterForm()
+    if form.validate_on_submit():
+        hash = generate_password_hash(request.form['psw'])
+        res = dbase.addUser(form.name.data, form.email.data, hash)
+        if res:
+            flash("Вы успешно зарегистрированы", "success")
+            return redirect(url_for('login'))
         else:
-            flash("Неверно заполнены поля", "error")
+            flash("Ошибка при добавлении в БД", "error")
 
-    return render_template("register.html", menu=dbase.getMenu(), title="Регистрация")
+    return render_template("register.html", menu=dbase.getMenu(), title="Регистрация", form=form)
 
 @app.route("/add_post", methods=["POST", "GET"])
 def addPost():

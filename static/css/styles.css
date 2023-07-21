@@ -121,3 +121,11 @@ ul.profile-info {
          color: #7E652F;
 }
 ul.profile-info li {margin-top: 10px;}
+
+.form-contact .invalid {
+         display: inline-block;
+         background: #FF9898;
+}
+.form-contact .invalid-feedback {
+         color: #CC0000;
+}
